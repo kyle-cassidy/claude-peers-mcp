@@ -25,8 +25,13 @@ caution) lives in `~/.codex/AGENTS.md`.
 
 ## The asymmetry: push vs. poll
 
-- **Claude sessions get true push.** The server streams inbound messages as
-  `notifications/claude/channel`, rendered as a `<channel>` turn mid-session.
+- **Claude sessions get push in principle** — the server streams inbound
+  messages as `notifications/claude/channel`, rendered as a `<channel>` turn
+  mid-session. **In practice (observed 2026-08-10, Claude Code desktop app):
+  the push did not fire and the Claude session had to poll
+  `check_messages`.** Until that's diagnosed (client capability not
+  advertised? channel not surfaced by this harness?), treat the bridge as
+  poll-both-ways: every agent polls at task boundaries.
 - **Codex is poll-only.** Codex does not advertise the
   `experimental["claude/channel"]` client capability, so
   `startInboundMessagePolling()` skips the background poller for that
