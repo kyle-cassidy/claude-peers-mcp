@@ -38,25 +38,34 @@ caution) lives in `~/.codex/AGENTS.md`.
   connection (commit `d1413d7`) and messages queue durably in SQLite until
   Codex calls `check_messages`. Nothing is lost; nothing interrupts.
 
-## Upgrade paths (not yet built)
+## Hook-based delivery (BUILT 2026-08-10) — both harnesses
 
-Codex hooks are stable (`codex features list` → `hooks: stable true`) and are
-the realistic route to pseudo-push, in order of value:
+`hooks/inbox-hook.ts` drains this session's mailbox and injects messages
+into model context. Two modes: `context` (print messages on stdout —
+UserPromptSubmit adds them to context) and `stop` (emit
+`{"decision":"block","reason":<messages>}` so the harness runs one more
+turn to handle them; silent when the mailbox is empty).
 
-1. **Stop-hook delivery.** A Stop hook runs a fast inbox peek; if a message
-   is waiting it returns `{"decision": "block", "reason": "<the message>"}`,
-   which forces Codex to continue the turn with the message as a synthetic
-   prompt — visible delivery inside the live GUI session at every turn
-   boundary. Needs a way for the hook script to resolve this session's peer
-   id (e.g. server.ts writing an id file keyed by PID, or a broker query by
-   TTY/cwd) so the peek can consume the right mailbox.
-2. **UserPromptSubmit / PostToolUse hooks** injecting pending messages as
-   `additionalContext` — at-prompt and mid-turn delivery.
-3. **`wait_for_message` long-poll tool** (Codex sets a high
-   `tool_timeout_sec`) for deliberate "stand by for the other agent"
-   collaboration phases.
-4. **macOS banner** via Codex's existing `notify` hook or terminal-notifier
-   when a message lands while Codex idles — covers the human, not the model.
+**Self-addressing:** server.ts now writes
+`~/.claude-peers/sessions/<harness-pid>.json` at registration (removed on
+clean exit). The hook walks its own ancestor PIDs to find that file — hook
+and MCP server share the harness as a common ancestor. `--peer-id <id>`
+bypasses resolution for testing. Draining uses `/poll-messages`
+(single-consumption), so hooks and `check_messages` never double-deliver.
+
+**Wiring:** Claude Code — `~/.claude/settings.json` hooks on
+`UserPromptSubmit` (context) and `Stop` (stop), exec-form, 10 s timeout.
+Codex — `~/.codex/config.toml` `[[hooks.UserPromptSubmit]]` and
+`[[hooks.Stop]]`. Restart sessions to activate: the session-map file only
+exists for servers started after this change, and Codex prompts once to
+trust the new hooks.
+
+**Loop caution:** two agents with stop-block hooks replying unconditionally
+can ping-pong; the injected envelope instructs reply-only-when-needed.
+
+Remaining (not built): a `wait_for_message` long-poll tool for deliberate
+stand-by phases; macOS banner on message arrival while idle (the human's
+notification, via terminal-notifier or Codex `notify`).
 
 Hard limits confirmed upstream: no arbitrary injection into a running Codex
 GUI thread (exclusive thread-writer lock, openai/codex#37450);

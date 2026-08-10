@@ -528,6 +528,27 @@ async function main() {
   myId = reg.id;
   log(`Registered as peer ${myId}`);
 
+  // Session map: lets harness hook scripts (which share this process's
+  // parent — the harness) resolve their own session's peer id by walking
+  // their ancestor PIDs. See hooks/inbox-hook.ts.
+  const sessionsDir = `${process.env.HOME}/.claude-peers/sessions`;
+  const sessionFile = `${sessionsDir}/${process.ppid}.json`;
+  try {
+    await Bun.$`mkdir -p ${sessionsDir}`.quiet();
+    await Bun.write(
+      sessionFile,
+      JSON.stringify({
+        id: myId,
+        pid: process.pid,
+        ppid: process.ppid,
+        cwd: myCwd,
+        registered_at: new Date().toISOString(),
+      }),
+    );
+  } catch (e) {
+    log(`Session-map write failed (non-critical): ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   // If summary generation is still running, update it when done
   if (!initialSummary) {
     summaryPromise.then(async () => {
@@ -578,6 +599,11 @@ async function main() {
       } catch {
         // Best effort
       }
+    }
+    try {
+      await Bun.$`rm -f ${process.env.HOME}/.claude-peers/sessions/${process.ppid}.json`.quiet();
+    } catch {
+      // Best effort
     }
     process.exit(0);
   };
