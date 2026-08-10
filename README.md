@@ -47,6 +47,12 @@ That's it. The broker daemon starts automatically the first time.
 > alias claudepeers='claude --dangerously-load-development-channels server:claude-peers'
 > ```
 
+> **GUI sessions:** the desktop app can't pass that flag, and a channel there
+> requires a plugin on Anthropic's remote allowlist. This repo ships plugin
+> packaging (`.claude-plugin/` + `plugin/`) that gets as far as the packaging
+> allows; see [`docs/plugin.md`](docs/plugin.md) for the install steps, the
+> double-registration caveat, and why GUI push is still blocked.
+
 ### 4. Open a second session and try it
 
 In another terminal, start Claude Code the same way. Then ask either one:

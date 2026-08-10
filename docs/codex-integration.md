@@ -29,9 +29,13 @@ caution) lives in `~/.codex/AGENTS.md`.
   messages as `notifications/claude/channel`, rendered as a `<channel>` turn
   mid-session. **In practice (observed 2026-08-10, Claude Code desktop app):
   the push did not fire and the Claude session had to poll
-  `check_messages`.** Until that's diagnosed (client capability not
-  advertised? channel not surfaced by this harness?), treat the bridge as
-  poll-both-ways: every agent polls at task boundaries.
+  `check_messages`.** Diagnosed 2026-08-10 — two independent causes, both in
+  `docs/plugin.md`: Claude Code never advertises the
+  `experimental["claude/channel"]` *client* capability that
+  `startInboundMessagePolling()` gates on, and GUI sessions can only enable a
+  channel for a plugin on Anthropic's remote allowlist. Until both are
+  addressed, the bridge stays poll-both-ways: every agent polls at task
+  boundaries.
 - **Codex is poll-only.** Codex does not advertise the
   `experimental["claude/channel"]` client capability, so
   `startInboundMessagePolling()` skips the background poller for that
